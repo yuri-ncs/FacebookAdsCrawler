@@ -3,9 +3,12 @@ package req
 import (
 	"encoding/json"
 	"fmt"
+	"gorm.io/gorm"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
+	"time"
 )
 
 type Payload struct {
@@ -15,6 +18,31 @@ type Payload struct {
 type Data struct {
 	Ar      int     `json:"__ar"`
 	Payload Payload `json:"payload"`
+}
+
+type KeyWord struct {
+	ID       uint   `gorm:"primarykey" json:"id,omitempty"`
+	Name     string `json:"name,omitempty"`
+	KeyWord  string `gorm:"index:idx_keyword_group_id,unique;" json:"keyWord,omitempty"`
+	URL      string `json:"url"`
+	GroupId  uint   `gorm:"index:idx_keyword_group_id,unique;" json:"groupId,omitempty"`
+	IsActive bool   `json:"isActive,omitempty"`
+
+	CreatedAt time.Time      `json:"created_at,omitempty"`
+	UpdatedAt time.Time      `json:"updated_at,omitempty"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt,omitempty"`
+}
+
+type SearchHistory struct {
+	ID uint `gorm:"primarykey" json:"id,omitempty"`
+
+	KeyWordId   uint `json:"keyWordId,omitempty"`
+	GroupId     uint `gorm:"index:idx_keyword_group_id,unique;" json:"groupId,omitempty"`
+	SearchCount uint `json:"searchCount,omitempty"`
+
+	CreatedAt time.Time      `json:"created_at,omitempty"`
+	UpdatedAt time.Time      `json:"updated_at,omitempty"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt,omitempty"`
 }
 
 func MakeRequest(url string) (*http.Response, error) {
@@ -94,4 +122,76 @@ func MakeUrl(search string) string {
 	searchquote := strings.Replace(search, " ", "%20", -1)
 
 	return baseurl + searchquote + "%22&v=550c25&session_id=8cd2ae4f-4ec2-4757-a6e5-416ff50ae254&count=30&active_status=all&ad_type=all&countries[0]=BR&media_type=all&search_type=keyword_exact_phrase"
+
+}
+
+func OpenFile() (*os.File, error) {
+	file, err := os.Open("/home/yuri/Documents/FacebookAdsCrawler/req/fb.txt")
+	if err != nil {
+		return nil, fmt.Errorf("erro ao abrir o arquivo: %v", err)
+	}
+
+	return file, nil
+}
+
+func ReadDataFromFile(file *os.File, db *gorm.DB) error {
+	data, err := ioutil.ReadAll(file)
+	if err != nil {
+		return fmt.Errorf("error reading file: %v", err)
+	}
+
+	defer file.Close()
+
+	jsonContent := strings.TrimPrefix(string(data), "for (;;);")
+
+	var dado Data
+
+	json.Unmarshal([]byte(jsonContent), &dado)
+
+	return SaveDataInDb(dado, db)
+}
+
+func SaveDataInDb(dado Data, db *gorm.DB) error {
+
+	err := db.AutoMigrate(&SearchHistory{})
+	if err != nil {
+		return fmt.Errorf("error creating table: %v", err)
+	}
+
+	var rows []KeyWord
+
+	rows, err = GetAllDataFromKeywordTable(db)
+
+	for i := 0; i < len(rows); i++ {
+
+		save := SearchHistory{
+			KeyWordId:   rows[i].ID,
+			GroupId:     rows[i].GroupId,
+			SearchCount: uint(dado.Payload.TotalCount),
+		}
+		err := db.Create(&save).Error
+		if err != nil {
+			fmt.Errorf("error saving data to database: %v", err)
+		}
+
+	}
+
+	if err != nil {
+		return fmt.Errorf("error saving data to database: %v", err)
+	}
+
+	return nil
+
+}
+
+func GetAllDataFromKeywordTable(db *gorm.DB) ([]KeyWord, error) {
+	var keyw []KeyWord
+
+	err := db.Where("is_active = ?", true).Where("deleted_at IS NULL").Find(&keyw).Error
+	if err != nil {
+		return nil, fmt.Errorf("error getting data from database: %v", err)
+	}
+
+	fmt.Println(keyw)
+	return keyw, nil
 }
