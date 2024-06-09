@@ -37,7 +37,7 @@ type SearchHistory struct {
 	ID uint `gorm:"primarykey" json:"id,omitempty"`
 
 	KeyWordId   uint `json:"keyWordId,omitempty"`
-	GroupId     uint `gorm:"index:idx_keyword_group_id,unique;" json:"groupId,omitempty"`
+	GroupId     uint `gorm:"index:idx_keyword_group_id;" json:"groupId,omitempty"`
 	SearchCount uint `json:"searchCount,omitempty"`
 
 	CreatedAt time.Time      `json:"created_at,omitempty"`
@@ -129,33 +129,6 @@ func ReadDataFromFile(file *os.File, db *gorm.DB) error {
 }
 
 func SaveDataInDb(dado Data, db *gorm.DB) error {
-
-	err := db.AutoMigrate(&SearchHistory{})
-	if err != nil {
-		return fmt.Errorf("error creating table: %v", err)
-	}
-
-	var rows []KeyWord
-
-	rows, err = GetAllDataFromKeywordTable(db)
-
-	for i := 0; i < len(rows); i++ {
-
-		save := SearchHistory{
-			KeyWordId:   rows[i].ID,
-			GroupId:     rows[i].GroupId,
-			SearchCount: uint(dado.Payload.TotalCount),
-		}
-		err := db.Create(&save).Error
-		if err != nil {
-			fmt.Errorf("error saving data to database: %v", err)
-		}
-
-	}
-
-	if err != nil {
-		return fmt.Errorf("error saving data to database: %v", err)
-	}
 
 	return nil
 

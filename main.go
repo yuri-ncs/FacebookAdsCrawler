@@ -23,15 +23,6 @@ type KeyWord struct {
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt,omitempty"`
 }
 
-var searchquotes = []string{
-	"software house",
-	"encapsulado",
-	"SASS",
-	"notebook",
-	"apple",
-	"pampers",
-}
-
 func main() {
 
 	dsn := "host=localhost user=postgres password=pass dbname=postgres port=5432 sslmode=disable"
@@ -42,7 +33,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	db.AutoMigrate(&KeyWord{})
+	db.AutoMigrate(&KeyWord{}, &req.SearchHistory{})
 
 	defer func() {
 		if sqlDB, err := db.DB(); err == nil {
@@ -58,18 +49,24 @@ func main() {
 	//	log.Fatal(data)
 	//}
 
-	fmt.Println("Data saved successfully to the database.")
+	//fmt.Println("Data saved successfully to the database.")
 
 	c := cron.New()
 
 	c.AddFunc(
 		"@every 4h", func() {
 
+			rows, err := req.GetAllDataFromKeywordTable(db)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+
 			fmt.Println("Running cron job")
 
-			for i, searchquote := range searchquotes {
+			for i, row := range rows {
 
-				url := req.MakeUrl(searchquote)
+				url := req.MakeUrl(row.KeyWord)
 
 				res, err := req.MakeRequest(url)
 
@@ -89,9 +86,18 @@ func main() {
 
 				// Imprimir a estrutura parseada
 				//fmt.Printf("Ar: %d\n", data.Ar)
-				fmt.Printf("%s - Payload TotalCounts: %d %d\n", searchquote, data.Payload.TotalCount, i)
+				fmt.Printf("%s - Payload TotalCounts: %d %d\n", row.KeyWord, data.Payload.TotalCount, i)
 
-				err = req.SaveDataInDb(data, db)
+				search := req.SearchHistory{
+					KeyWordId:   row.ID,
+					GroupId:     row.GroupId,
+					SearchCount: uint(data.Payload.TotalCount),
+				}
+
+				err = db.Create(&search).Error
+				if err != nil {
+					fmt.Errorf("error saving data to database: %v", err)
+				}
 
 				if err != nil {
 					fmt.Println(err)
