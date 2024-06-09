@@ -40,16 +40,6 @@ func main() {
 			sqlDB.Close()
 		}
 	}()
-	//
-	//file, _ := req.OpenFile()
-	//
-	//data := req.ReadDataFromFile(file, db)
-	//
-	//if data != nil {
-	//	log.Fatal(data)
-	//}
-
-	//fmt.Println("Data saved successfully to the database.")
 
 	c := cron.New()
 
