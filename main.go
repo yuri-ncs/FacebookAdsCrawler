@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/robfig/cron"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"log"
@@ -22,6 +23,15 @@ type KeyWord struct {
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt,omitempty"`
 }
 
+var searchquotes = []string{
+	"software house",
+	"encapsulado",
+	"SASS",
+	"notebook",
+	"apple",
+	"pampers",
+}
+
 func main() {
 
 	dsn := "host=localhost user=postgres password=pass dbname=postgres port=5432 sslmode=disable"
@@ -32,53 +42,66 @@ func main() {
 		log.Fatal(err)
 	}
 
+	db.AutoMigrate(&KeyWord{})
+
 	defer func() {
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()
 		}
 	}()
-
-	file, _ := req.OpenFile()
-
-	data := req.ReadDataFromFile(file, db)
-
-	if data != nil {
-		log.Fatal(data)
-	}
+	//
+	//file, _ := req.OpenFile()
+	//
+	//data := req.ReadDataFromFile(file, db)
+	//
+	//if data != nil {
+	//	log.Fatal(data)
+	//}
 
 	fmt.Println("Data saved successfully to the database.")
-	/*	searchquotes := []string{
-		"software house",
-		"encapsulado",
-		"SASS",
-		"notebook",
-		"apple",
-		"pampers",
-	}*/
 
-	/*for i, searchquote := range searchquotes {
-		go func(number int, searchQuote string) {
+	c := cron.New()
 
-			url := req.MakeUrl(searchQuote)
+	c.AddFunc(
+		"@every 4h", func() {
 
-			res, err := req.MakeRequest(url)
+			fmt.Println("Running cron job")
 
-			if err != nil {
-				fmt.Println(err)
-				return
+			for i, searchquote := range searchquotes {
+
+				url := req.MakeUrl(searchquote)
+
+				res, err := req.MakeRequest(url)
+
+				fmt.Println(res.Body)
+
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+
+				data, err := req.ParseResponse(res)
+				if err != nil {
+					fmt.Println(err)
+					return
+
+				}
+
+				// Imprimir a estrutura parseada
+				//fmt.Printf("Ar: %d\n", data.Ar)
+				fmt.Printf("%s - Payload TotalCounts: %d %d\n", searchquote, data.Payload.TotalCount, i)
+
+				err = req.SaveDataInDb(data, db)
+
+				if err != nil {
+					fmt.Println(err)
+				}
 			}
 
-			data, err := req.ParseResponse(res)
-			if err != nil {
-				fmt.Println(err)
-				return
+		},
+	)
 
-			}
+	c.Start()
 
-			// Imprimir a estrutura parseada
-			//fmt.Printf("Ar: %d\n", data.Ar)
-			fmt.Printf("%s - Payload TotalCounts: %d %d\n", searchQuote, data.Payload.TotalCount, number)
-		}(i, searchquote)
-	}
-	select {}*/
+	select {}
 }
