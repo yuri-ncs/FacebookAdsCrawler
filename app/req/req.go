@@ -8,42 +8,8 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
+	"teste123/database"
 )
-
-type Payload struct {
-	TotalCount int `json:"totalCount"`
-}
-
-type Data struct {
-	Ar      int     `json:"__ar"`
-	Payload Payload `json:"payload"`
-}
-
-type KeyWord struct {
-	ID       uint   `gorm:"primarykey" json:"id,omitempty"`
-	Name     string `json:"name,omitempty"`
-	KeyWord  string `gorm:"index:idx_keyword_group_id,unique;" json:"keyWord,omitempty"`
-	URL      string `json:"url"`
-	GroupId  uint   `gorm:"index:idx_keyword_group_id,unique;" json:"groupId,omitempty"`
-	IsActive bool   `json:"isActive,omitempty"`
-
-	CreatedAt time.Time      `json:"created_at,omitempty"`
-	UpdatedAt time.Time      `json:"updated_at,omitempty"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt,omitempty"`
-}
-
-type SearchHistory struct {
-	ID uint `gorm:"primarykey" json:"id,omitempty"`
-
-	KeyWordId   uint `json:"keyWordId,omitempty"`
-	GroupId     uint `gorm:"index:idx_keyword_group_id;" json:"groupId,omitempty"`
-	SearchCount uint `json:"searchCount,omitempty"`
-
-	CreatedAt time.Time      `json:"created_at,omitempty"`
-	UpdatedAt time.Time      `json:"updated_at,omitempty"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt,omitempty"`
-}
 
 func MakeRequest(url string) (*http.Response, error) {
 	method := "POST"
@@ -71,10 +37,10 @@ func MakeRequest(url string) (*http.Response, error) {
 	return res, nil
 }
 
-func ParseResponse(res *http.Response) (Data, error) {
+func ParseResponse(res *http.Response) (database.Data, error) {
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return Data{}, fmt.Errorf("erro ao ler o corpo da resposta: %v", err)
+		return database.Data{}, fmt.Errorf("erro ao ler o corpo da resposta: %v", err)
 	}
 	defer res.Body.Close()
 
@@ -82,7 +48,7 @@ func ParseResponse(res *http.Response) (Data, error) {
 	cleanJsonString := strings.TrimPrefix(string(body), "for (;;);")
 
 	// Definir a estrutura de dados
-	var data Data
+	var data database.Data
 
 	// Parsear o JSON
 	err = json.Unmarshal([]byte(cleanJsonString), &data)
@@ -121,21 +87,21 @@ func ReadDataFromFile(file *os.File, db *gorm.DB) error {
 
 	jsonContent := strings.TrimPrefix(string(data), "for (;;);")
 
-	var dado Data
+	var dado database.Data
 
 	json.Unmarshal([]byte(jsonContent), &dado)
 
 	return SaveDataInDb(dado, db)
 }
 
-func SaveDataInDb(dado Data, db *gorm.DB) error {
+func SaveDataInDb(dado database.Data, db *gorm.DB) error {
 
 	return nil
 
 }
 
-func GetAllDataFromKeywordTable(db *gorm.DB) ([]KeyWord, error) {
-	var keyw []KeyWord
+func GetAllDataFromKeywordTable(db *gorm.DB) ([]database.KeyWord, error) {
+	var keyw []database.KeyWord
 
 	err := db.Where("is_active = ?", true).Where("deleted_at IS NULL").Find(&keyw).Error
 	if err != nil {

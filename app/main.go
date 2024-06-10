@@ -6,22 +6,9 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"log"
+	"teste123/database"
 	"teste123/req"
-	"time"
 )
-
-type KeyWord struct {
-	ID       uint   `gorm:"primarykey" json:"id,omitempty"`
-	Name     string `json:"name,omitempty"`
-	KeyWord  string `gorm:"index:idx_keyword_group_id,unique;" json:"keyWord,omitempty"`
-	URL      string `json:"url"`
-	GroupId  uint   `gorm:"index:idx_keyword_group_id,unique;" json:"groupId,omitempty"`
-	IsActive bool   `json:"isActive,omitempty"`
-
-	CreatedAt time.Time      `json:"created_at,omitempty"`
-	UpdatedAt time.Time      `json:"updated_at,omitempty"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt,omitempty"`
-}
 
 func main() {
 
@@ -33,7 +20,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	db.AutoMigrate(&KeyWord{}, &req.SearchHistory{})
+	db.AutoMigrate(&database.KeyWord{}, &database.SearchHistory{})
 
 	defer func() {
 		if sqlDB, err := db.DB(); err == nil {
@@ -78,7 +65,7 @@ func main() {
 				//fmt.Printf("Ar: %d\n", data.Ar)
 				fmt.Printf("%s - Payload TotalCounts: %d %d\n", row.KeyWord, data.Payload.TotalCount, i)
 
-				search := req.SearchHistory{
+				search := database.SearchHistory{
 					KeyWordId:   row.ID,
 					GroupId:     row.GroupId,
 					SearchCount: uint(data.Payload.TotalCount),
