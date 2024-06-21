@@ -1,0 +1,11 @@
+{
+    "count": "30",
+    "countries": "BR",
+    "search_type":"keyword_exact_phrase",
+    "base_url":  "https://www.facebook.com/ads/library/async/search_ads/?q=",
+    "accept_language": "en-US,en;q=0.9,pt;q=0.8",
+    "content_type": "application/x-www-form-urlencoded",
+    "method": "POST",
+    "accept": "*/*"
+
+}

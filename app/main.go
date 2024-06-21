@@ -2,36 +2,27 @@ package main
 
 import (
 	"fmt"
+	_ "github.com/joho/godotenv/autoload"
 	"github.com/robfig/cron"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
-	"log"
+	"teste123/config"
 	"teste123/database"
 	"teste123/req"
 )
 
 func main() {
 
-	dsn := "host=localhost user=postgres password=pass dbname=postgres port=5432 sslmode=disable"
-
-	// Connect to the database
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	requestConfig, err := config.LoadRequestConfig()
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 
-	db.AutoMigrate(&database.KeyWord{}, &database.SearchHistory{})
-
-	defer func() {
-		if sqlDB, err := db.DB(); err == nil {
-			sqlDB.Close()
-		}
-	}()
+	db, err := database.DatabaseOpen()
 
 	c := cron.New()
 
 	c.AddFunc(
-		"@every 4h", func() {
+		"@every 1h", func() {
 
 			rows, err := req.GetAllDataFromKeywordTable(db)
 			if err != nil {
@@ -43,11 +34,9 @@ func main() {
 
 			for i, row := range rows {
 
-				url := req.MakeUrl(row.KeyWord)
+				url := req.MakeUrl(row.KeyWord, requestConfig)
 
-				res, err := req.MakeRequest(url)
-
-				fmt.Println(res.Body)
+				res, err := req.MakeRequest(url, requestConfig)
 
 				if err != nil {
 					fmt.Println(err)

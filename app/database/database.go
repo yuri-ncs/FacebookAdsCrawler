@@ -1,6 +1,7 @@
 package database
 
 import (
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"time"
 )
@@ -37,4 +38,32 @@ type SearchHistory struct {
 	CreatedAt time.Time      `json:"created_at,omitempty"`
 	UpdatedAt time.Time      `json:"updated_at,omitempty"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt,omitempty"`
+}
+
+func DatabaseOpen() (*gorm.DB, error) {
+	dsn := "host=localhost user=postgres password=pass dbname=postgres port=5432 sslmode=disable"
+
+	// Connect to the database
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		return nil, err
+	}
+
+	err = db.AutoMigrate(&KeyWord{}, &SearchHistory{})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return db, nil
+}
+
+func PopulateKeyword(db *gorm.DB) error {
+	db.Create(&KeyWord{Name: "teste 1", KeyWord: "Software House", URL: "", GroupId: 1, IsActive: true})
+	db.Create(&KeyWord{Name: "teste 2", KeyWord: "Apple", URL: "", GroupId: 1, IsActive: true})
+	db.Create(&KeyWord{Name: "teste 3", KeyWord: "Samsung", URL: "", GroupId: 2, IsActive: true})
+	db.Create(&KeyWord{Name: "teste 4", KeyWord: "Huawei", URL: "", GroupId: 3, IsActive: true})
+	db.Create(&KeyWord{Name: "teste 5", KeyWord: "Dell", URL: "", GroupId: 5, IsActive: true})
+
+	return nil
 }

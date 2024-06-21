@@ -8,26 +8,27 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"teste123/config"
 	"teste123/database"
 )
 
-func MakeRequest(url string) (*http.Response, error) {
-	method := "POST"
-	payload := strings.NewReader("__a=1&fb_dtsg=NAcN8gzvxP02iYCYKB2u8DH4XGGSlImW_3_t2m-QqJuBVTENYAtnD0g%3A45%3A1700793422")
+/*
+MakeRequest is a function that makes a request to the given URL and a given configuration.
+*/
+func MakeRequest(url string, config config.RequestConfig) (*http.Response, error) {
+	reader := "__a=1&" + "lsd=" + os.Getenv("X_FB_LSD")
+	data := strings.NewReader(reader)
 
 	client := &http.Client{}
-	req, err := http.NewRequest(method, url, payload)
+	req, err := http.NewRequest(config.Method, url, data)
 	if err != nil {
 		return nil, fmt.Errorf("erro ao criar a requisição: %v", err)
 	}
 
-	req.Header.Add("accept", "*/*")
-	req.Header.Add("accept-language", "en-US,en;q=0.9,pt;q=0.8")
-	req.Header.Add("content-type", "application/x-www-form-urlencoded")
-	req.Header.Add(
-		"cookie",
-		"m_ls=%7B%22c%22%3A%7B%221%22%3A%22HCwAABbKwg0WlvqmuAgTBRbe4vOdk70tAA%22%2C%222%22%3A%22GSwVQBxMAAAWABb25t3GDBYAABV-HEwAABYAFoLn3cYMFgAAFigA%22%7D%2C%22d%22%3A%2204ada221-ff8c-4e34-858e-2290f771195c%22%2C%22s%22%3A%220%22%2C%22u%22%3A%22raydvk%22%7D; datr=agjkZMjFmfE67fxpgGx8H5sT; sb=8MQyZVYLK-FBdlP_IwJlMLQ6; c_user=100006600013999; ps_n=1; ps_l=1; presence=C%7B%22t3%22%3A%5B%5D%2C%22utc3%22%3A1716952782453%2C%22v%22%3A1%7D; xs=45%3AT_J_yRyfD1fbzA%3A2%3A1700793422%3A-1%3A10129%3A%3AAcWcg8lWgsb8GNTu0KEWT-sQgaRHHVlFTwKskf2FFSI; fr=1HTMXeLSSjpjSH1jR.AWVDExA0RUJiymUTauK4FqiKQbQ.BmYQ6K..AAA.0.0.BmYQ6K.AWVZcDSxEcM; usida=eyJ2ZXIiOjEsImlkIjoiQXNldHBpbWw5cDdlZiIsInRpbWUiOjE3MTc5NTM2NDZ9; wd=1472x857",
-	)
+	req.Header.Add("User-Agent", os.Getenv("USER_AGENT"))
+	req.Header.Add("X-FB-LSD", os.Getenv("X_FB_LSD"))
+	req.Header.Add("Sec-Fetch-Site", "same-origin")
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	res, err := client.Do(req)
 	if err != nil {
@@ -37,6 +38,9 @@ func MakeRequest(url string) (*http.Response, error) {
 	return res, nil
 }
 
+/*
+ParseResponse is a function that parses the response from the request.
+*/
 func ParseResponse(res *http.Response) (database.Data, error) {
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
@@ -46,28 +50,36 @@ func ParseResponse(res *http.Response) (database.Data, error) {
 
 	// Remover a parte `for (;;);` para obter o JSON válido
 	cleanJsonString := strings.TrimPrefix(string(body), "for (;;);")
+	fmt.Println("Cleaned JSON string:", cleanJsonString)
 
-	// Definir a estrutura de dados
 	var data database.Data
 
 	// Parsear o JSON
 	err = json.Unmarshal([]byte(cleanJsonString), &data)
 	if err != nil {
+		fmt.Println(cleanJsonString)
 		return data, fmt.Errorf("erro ao fazer o parsing do JSON: %v", err)
+
 	}
 
 	return data, nil
 }
 
-func MakeUrl(search string) string {
-	baseurl := "https://www.facebook.com/ads/library/async/search_ads/?q=%22"
+/*
+MakeUrl is a function that makes the URL to be used in the request.
+*/
+func MakeUrl(search string, config config.RequestConfig) string {
+	searchQuote := strings.Replace(strings.ToLower(search), " ", "%20", -1)
 
-	searchquote := strings.Replace(search, " ", "%20", -1)
+	endUrl := "&countries[0]=" + config.Countries
 
-	return baseurl + searchquote + "%22&count=30&countries%5C[0%5C]=BR&search_type=keyword_exact_phrase"
+	finalUrl := config.BaseURL + searchQuote + endUrl
+	fmt.Println(finalUrl)
+	return finalUrl
 
 }
 
+// this function below is used when the pc is blocked from fb LOL
 func OpenFile() (*os.File, error) {
 	file, err := os.Open("/home/yuri/Documents/FacebookAdsCrawler/req/fb.txt")
 	if err != nil {
@@ -89,8 +101,10 @@ func ReadDataFromFile(file *os.File, db *gorm.DB) error {
 
 	var dado database.Data
 
-	json.Unmarshal([]byte(jsonContent), &dado)
-
+	err = json.Unmarshal([]byte(jsonContent), &dado)
+	if err != nil {
+		return fmt.Errorf("error unmarshalling json: %v", err)
+	}
 	return SaveDataInDb(dado, db)
 }
 
@@ -108,6 +122,5 @@ func GetAllDataFromKeywordTable(db *gorm.DB) ([]database.KeyWord, error) {
 		return nil, fmt.Errorf("error getting data from database: %v", err)
 	}
 
-	fmt.Println(keyw)
 	return keyw, nil
 }
