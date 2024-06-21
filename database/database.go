@@ -3,6 +3,7 @@ package database
 import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"os"
 	"time"
 )
 
@@ -41,7 +42,13 @@ type SearchHistory struct {
 }
 
 func DatabaseOpen() (*gorm.DB, error) {
-	dsn := "host=localhost user=postgres password=pass dbname=postgres port=5432 sslmode=disable"
+
+	host := os.Getenv("DB_HOST")
+	port := os.Getenv("DB_PORT")
+	password := os.Getenv("DB_PASS")
+
+	//dsn := "host=localhost user=postgres password=pass dbname=postgres port=5432 sslmode=disable"
+	dsn := "host=" + host + " user=postgres password=" + password + " dbname=postgres port=" + port + "sslmode=disable"
 
 	// Connect to the database
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
