@@ -1,12 +1,5 @@
 package config
 
-import (
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"os"
-)
-
 type RequestConfig struct {
 	Count          string `json:"count"`
 	Countries      string `json:"countries"`
@@ -19,28 +12,15 @@ type RequestConfig struct {
 }
 
 func LoadRequestConfig() (RequestConfig, error) {
-	// Open the configuration file
-	filename := "requests-config.json"
 
-	file, err := os.Open("./config/" + filename)
-
-	if err != nil {
-		return RequestConfig{}, fmt.Errorf("error opening config file '%s': %w", filename, err)
-	}
-	defer file.Close()
-
-	// Read the entire file contents
-	data, err := ioutil.ReadAll(file)
-	if err != nil {
-		return RequestConfig{}, fmt.Errorf("error reading config file '%s': %w", filename, err)
-	}
-
-	// Decode the JSON data
-	var config RequestConfig
-	err = json.Unmarshal(data, &config)
-	if err != nil {
-		return RequestConfig{}, fmt.Errorf("error unmarshaling config JSON: %w", err)
-	}
-
-	return config, nil
+	return RequestConfig{
+		Count:          "30",
+		Countries:      "BR",
+		SearchType:     "keyword_exact_phrase",
+		BaseURL:        "https://www.facebook.com/ads/library/async/search_ads/?q=",
+		AcceptLanguage: "en-US,en;q=0.9,pt;q=0.8",
+		ContentType:    "application/x-www-form-urlencoded",
+		Method:         "POST",
+		Accept:         "*/*",
+	}, nil
 }
