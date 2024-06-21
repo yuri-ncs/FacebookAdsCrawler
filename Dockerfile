@@ -1,48 +1,32 @@
-# Stage 1: Build the Go binary
-FROM golang:1.19-alpine as builder
+# Use a imagem oficial do Golang como imagem base
+FROM golang:1.21-alpine AS builder
 
-# Install git (required for downloading Go modules)
-RUN apk add --no-cache git
-
-# Set the working directory inside the container
+# Defina o diretório de trabalho dentro do contêiner
 WORKDIR /app
 
-# Copy the go.mod and go.sum files and download dependencies
+# Copie o arquivo go.mod e go.sum para baixar as dependências
 COPY go.mod go.sum ./
+
+# Baixe as dependências
 RUN go mod download
 
-# Log the contents of /app directory after downloading dependencies
-RUN ls -la /app
-
-# Copy the rest of the application source code
+# Copie o código fonte para o diretório de trabalho no contêiner
 COPY . .
 
-# Log the contents of /app directory after copying source code
-RUN ls -la /app
+# Compile o aplicativo
+RUN go build -o main .
 
-# Ensure main.go exists and build the Go binary
-RUN go build -o /app/ads-api .
-
-# Log the contents of /app directory after building the binary
-RUN ls -la /app
-
-# Stage 2: Create a smaller image with the built binary
+# Inicie um novo estágio de construção
 FROM alpine:latest
 
-# Set the working directory inside the container
-WORKDIR /root/
+# Defina o diretório de trabalho dentro do contêiner
+WORKDIR /app
 
-# Install certificates for making HTTPS requests if needed
-RUN apk --no-cache add ca-certificates
+# Copie o executável compilado do estágio anterior
+COPY --from=builder /app/main .
 
-# Copy the built binary from the builder stage
-COPY --from=builder /app/ads-api .
+# Exponha a porta 8080 para acesso externo
+EXPOSE 8080
 
-# Log the contents of /root directory after copying the binary
-RUN ls -la /root/
-
-# Expose the port the service will run on
-EXPOSE 8000
-
-# Command to run the executable
-CMD ["./ads-api"]
+# Execute o aplicativo quando o contêiner for iniciado
+CMD ["./main"]
