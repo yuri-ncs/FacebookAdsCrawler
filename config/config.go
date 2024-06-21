@@ -22,7 +22,7 @@ func LoadRequestConfig() (RequestConfig, error) {
 	// Open the configuration file
 	filename := "requests-config.json"
 
-	file, err := os.Open("/config/" + filename)
+	file, err := os.Open("config/" + filename)
 	if err != nil {
 		return RequestConfig{}, fmt.Errorf("error opening config file '%s': %w", filename, err)
 	}
