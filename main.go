@@ -22,7 +22,7 @@ func main() {
 	c := cron.New()
 
 	c.AddFunc(
-		"@every 10m", func() {
+		"@every 1h", func() {
 
 			rows, err := req.GetAllDataFromKeywordTable(db)
 			if err != nil {

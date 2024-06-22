@@ -6,6 +6,7 @@ import (
 	"gorm.io/gorm"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"teste123/config"
@@ -15,12 +16,48 @@ import (
 /*
 MakeRequest is a function that makes a request to the given URL and a given configuration.
 */
-func MakeRequest(url string, config config.RequestConfig) (*http.Response, error) {
+func MakeRequest(urlString string, config config.RequestConfig) (*http.Response, error) {
 	reader := "__a=1&" + "lsd=" + os.Getenv("X_FB_LSD")
 	data := strings.NewReader(reader)
 
-	client := &http.Client{}
-	req, err := http.NewRequest(config.Method, url, data)
+	servers := []struct {
+		IP   string
+		Port string
+	}{
+		{"45.248.55.75", "6661"},
+		{"192.53.142.178", "5875"},
+		{"208.73.42.46", "9057"},
+		{"192.46.185.172", "5862"},
+		{"130.180.235.96", "5816"},
+		{"63.246.130.233", "6434"},
+		{"130.180.234.239", "7462"},
+		{"63.246.130.53", "6254"},
+		{"130.180.235.70", "5790"},
+		{"45.196.61.145", "6183"},
+	}
+
+	actualServer := servers[2]
+
+	// Defina a URL do proxy com autenticação
+	proxyURL, err := url.Parse("http://euhjdfiy:qiy3k4qsrdcw@" + actualServer.IP + ":" + actualServer.Port)
+	if err != nil {
+		fmt.Println("Erro ao analisar a URL do proxy:", err)
+		panic("proxy")
+	}
+
+	// Crie um transporte HTTP personalizado
+	transport := &http.Transport{
+		Proxy: http.ProxyURL(proxyURL),
+	}
+
+	fmt.Println(transport)
+
+	// Crie um cliente HTTP usando o transporte personalizado
+	client := &http.Client{
+		Transport: transport,
+	}
+
+	req, err := http.NewRequest(config.Method, urlString, data)
 	if err != nil {
 		return nil, fmt.Errorf("erro ao criar a requisição: %v", err)
 	}
@@ -50,7 +87,7 @@ func ParseResponse(res *http.Response) (database.Data, error) {
 
 	// Remover a parte `for (;;);` para obter o JSON válido
 	cleanJsonString := strings.TrimPrefix(string(body), "for (;;);")
-	fmt.Println("Cleaned JSON string:", cleanJsonString)
+	//fmt.Println("Cleaned JSON string:", cleanJsonString)
 
 	var data database.Data
 
