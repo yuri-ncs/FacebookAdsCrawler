@@ -21,8 +21,9 @@ func main() {
 
 	c := cron.New()
 
+	// Run every 4 hours
 	c.AddFunc(
-		"@every 1h", func() {
+		"0 */4 * * *", func() {
 
 			rows, err := req.GetAllDataFromKeywordTable(db)
 			if err != nil {
