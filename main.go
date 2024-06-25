@@ -24,7 +24,7 @@ func main() {
 
 	// Run every 4 hours
 	c.AddFunc(
-		"*/10 * * * *", func() {
+		"@every 10m", func() {
 
 			fmt.Println("Running cron job")
 
