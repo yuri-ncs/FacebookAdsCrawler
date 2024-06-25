@@ -140,7 +140,10 @@ func MakeUrl(rawUrl string) (string, error) {
 
 	// Check for empty variables
 
-	for _, field := range []string{adLibraryQuery.ActiveStatus, adLibraryQuery.AdType, adLibraryQuery.Country, adLibraryQuery.SearchType, adLibraryQuery.MediaType} {
+	for _, field := range []string{
+		adLibraryQuery.ActiveStatus, adLibraryQuery.AdType, adLibraryQuery.Country, adLibraryQuery.SearchType,
+		adLibraryQuery.MediaType,
+	} {
 		if field == "" {
 			switch field {
 			case adLibraryQuery.ActiveStatus:
@@ -200,7 +203,7 @@ func SaveDataInDb(dado database.Data, db *gorm.DB) error {
 func GetAllDataFromKeywordTable(db *gorm.DB) ([]database.KeyWord, error) {
 	var keyw []database.KeyWord
 
-	err := db.Where("is_active = ?", true).Where("deleted_at IS NULL").Find(&keyw).Error
+	err := db.Where("is_active = ? AND deleted_at IS NULL", true).Find(&keyw).Error
 	if err != nil {
 		return nil, fmt.Errorf("error getting data from database: %v", err)
 	}

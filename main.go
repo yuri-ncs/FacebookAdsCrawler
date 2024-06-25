@@ -36,6 +36,13 @@ func main() {
 
 			for i, row := range rows {
 
+				fmt.Println("Row: ", row.KeyWord, i)
+
+				if row.KeyWord == "" {
+					fmt.Println("Keyword is empty")
+					continue
+				}
+
 				url, err := req.MakeUrl(row.KeyWord)
 				if err != nil {
 					fmt.Println(err)
