@@ -4,26 +4,29 @@ import (
 	"fmt"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/robfig/cron"
-	"teste123/config"
 	"teste123/database"
 	"teste123/req"
 )
 
 func main() {
 
-	requestConfig, err := config.LoadRequestConfig()
+	db, err := database.DatabaseOpen()
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	db, err := database.DatabaseOpen()
+	fmt.Println("Database connected")
 
 	c := cron.New()
 
+	fmt.Println("Cron job started")
+
 	// Run every 4 hours
 	c.AddFunc(
-		"0 */4 * * *", func() {
+		"* * * * *", func() {
+
+			fmt.Println("Running cron job")
 
 			rows, err := req.GetAllDataFromKeywordTable(db)
 			if err != nil {
@@ -31,15 +34,18 @@ func main() {
 				return
 			}
 
-			fmt.Println("Running cron job")
-
 			for i, row := range rows {
 
-				url := req.MakeUrl(row.KeyWord, requestConfig)
+				url, err := req.MakeUrl(row.KeyWord)
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
 
-				res, err := req.MakeRequest(url, requestConfig)
+				res, err := req.MakeRequest(url)
 
 				if err != nil {
+
 					fmt.Println(err)
 					return
 				}
