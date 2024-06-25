@@ -9,16 +9,22 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"teste123/config"
 	"teste123/database"
 )
+
+type AdLibraryQuery struct {
+	ActiveStatus  string
+	AdType        string
+	Country       string
+	ViewAllPageID string
+	SearchType    string
+	MediaType     string
+}
 
 /*
 MakeRequest is a function that makes a request to the given URL and a given configuration.
 */
-func MakeRequest(urlString string, config config.RequestConfig) (*http.Response, error) {
-	reader := "__a=1&" + "lsd=" + os.Getenv("X_FB_LSD")
-	data := strings.NewReader(reader)
+func MakeRequest(urlString string) (*http.Response, error) {
 
 	servers := []struct {
 		IP   string
@@ -36,7 +42,7 @@ func MakeRequest(urlString string, config config.RequestConfig) (*http.Response,
 		{"45.196.61.145", "6183"},
 	}
 
-	actualServer := servers[2]
+	actualServer := servers[3]
 
 	// Defina a URL do proxy com autenticação
 	proxyURL, err := url.Parse("http://euhjdfiy:qiy3k4qsrdcw@" + actualServer.IP + ":" + actualServer.Port)
@@ -57,7 +63,10 @@ func MakeRequest(urlString string, config config.RequestConfig) (*http.Response,
 		Transport: transport,
 	}
 
-	req, err := http.NewRequest(config.Method, urlString, data)
+	reader := "__a=1&lsd=" + os.Getenv("X_FB_LSD")
+	data := strings.NewReader(reader)
+
+	req, err := http.NewRequest("POST", urlString, data)
 	if err != nil {
 		return nil, fmt.Errorf("erro ao criar a requisição: %v", err)
 	}
@@ -103,20 +112,57 @@ func ParseResponse(res *http.Response) (database.Data, error) {
 }
 
 /*
-MakeUrl is a function that makes the URL to be used in the request.
+MakeUrl is a function that makes the URL to be used in the request. deprecated
 */
-func MakeUrl(search string, config config.RequestConfig) string {
-	searchQuote := strings.Replace(strings.ToLower(search), " ", "%20", -1)
+func MakeUrl(rawUrl string) (string, error) {
 
-	endUrl := "&countries[0]=" + config.Countries
+	parsedURL, err := url.Parse(rawUrl)
+	if err != nil {
+		return "", err
+	}
 
-	finalUrl := config.BaseURL + searchQuote + endUrl
-	fmt.Println(finalUrl)
-	return finalUrl
+	queryParams := parsedURL.Query()
 
+	adLibraryQuery := AdLibraryQuery{
+		ActiveStatus:  queryParams.Get("active_status"),
+		AdType:        queryParams.Get("ad_type"),
+		Country:       queryParams.Get("country"),
+		ViewAllPageID: queryParams.Get("view_all_page_id"),
+		SearchType:    queryParams.Get("search_type"),
+		MediaType:     queryParams.Get("media_type"),
+	}
+
+	// Check for invalid PageID (already present)
+	if adLibraryQuery.ViewAllPageID == "0" || adLibraryQuery.ViewAllPageID == "" {
+		fmt.Println("Warning: Page Id is 0")
+		return "", fmt.Errorf("Invalid PageID: 0")
+	}
+
+	// Check for empty variables
+
+	for _, field := range []string{adLibraryQuery.ActiveStatus, adLibraryQuery.AdType, adLibraryQuery.Country, adLibraryQuery.SearchType, adLibraryQuery.MediaType} {
+		if field == "" {
+			switch field {
+			case adLibraryQuery.ActiveStatus:
+				adLibraryQuery.ActiveStatus = "all"
+			case adLibraryQuery.Country:
+				fmt.Println("Warning: Country is empty, using BR as default")
+				adLibraryQuery.Country = "BR"
+			case adLibraryQuery.SearchType:
+				fmt.Println("Warning: Search Type is empty")
+				adLibraryQuery.SearchType = "page"
+			}
+			break
+		}
+	}
+
+	baseurl := "https://www.facebook.com/ads/library/async/search_ads/?"
+
+	finalUrl := baseurl + "active_status=" + url.QueryEscape(adLibraryQuery.ActiveStatus) + "&countries[0]=" + url.QueryEscape(adLibraryQuery.Country) + "&view_all_page_id=" + url.QueryEscape(adLibraryQuery.ViewAllPageID) + "&search_type=" + url.QueryEscape(adLibraryQuery.SearchType)
+	return finalUrl, nil
 }
 
-// this function below is used when the pc is blocked from fb LOL
+// OpenFile this function below is used when the pc is blocked from fb LOL
 func OpenFile() (*os.File, error) {
 	file, err := os.Open("/home/yuri/Documents/FacebookAdsCrawler/req/fb.txt")
 	if err != nil {
