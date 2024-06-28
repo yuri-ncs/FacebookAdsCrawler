@@ -43,14 +43,16 @@ type SearchHistory struct {
 
 func DatabaseOpen() (*gorm.DB, error) {
 
-	host := os.Getenv("DB_HOST")
-	port := os.Getenv("DB_PORT")
-	password := os.Getenv("DB_PASSWORD")
-	user := "postgres"
-	DBName := "postgres"
+	host := os.Getenv("POSTGRES_HOST")
+	password := os.Getenv("POSTGRES_PASSWORD")
+	port := os.Getenv("POSTGRES_PORT")
+	DBName := os.Getenv("POSTGRES_DBNAME")
+	user := os.Getenv("POSTGRES_USER")
+	sslmode := os.Getenv("POSTGRES_SSLMODE")
+	timezone := os.Getenv("POSTGRES_TIMEZONE")
 
 	//dsn := "host=localhost user=postgres password=pass dbname=postgres port=5432 sslmode=disable"
-	dsn := "host=" + host + " user=" + user + " password=" + password + " dbname=" + DBName + " port=" + port + " sslmode=disable"
+	dsn := "host=" + host + " user=" + user + " password=" + password + " dbname=" + DBName + " port=" + port + " TimeZone=" + timezone + " sslmode=" + sslmode
 
 	// Connect to the database
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
