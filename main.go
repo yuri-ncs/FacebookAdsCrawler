@@ -4,6 +4,7 @@ import (
 	"fmt"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/robfig/cron"
+	"os"
 	"teste123/database"
 	"teste123/req"
 )
@@ -22,9 +23,15 @@ func main() {
 
 	fmt.Println("Cron job started")
 
+	period := os.Getenv("CRON_PERIOD")
+
+	if period == "" {
+		period = "@every 4h"
+	}
+
 	// Run every 4 hours
 	c.AddFunc(
-		"@every 10m", func() {
+		period, func() {
 
 			fmt.Println("Running cron job")
 
@@ -46,7 +53,7 @@ func main() {
 				url, err := req.MakeUrl(row.KeyWord)
 				if err != nil {
 					fmt.Println(err)
-					return
+					continue
 				}
 
 				res, err := req.MakeRequest(url)

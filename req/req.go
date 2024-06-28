@@ -42,7 +42,7 @@ func MakeRequest(urlString string) (*http.Response, error) {
 		{"45.196.61.145", "6183"},
 	}
 
-	actualServer := servers[3]
+	actualServer := servers[4]
 
 	// Defina a URL do proxy com autenticação
 	proxyURL, err := url.Parse("http://euhjdfiy:qiy3k4qsrdcw@" + actualServer.IP + ":" + actualServer.Port)
