@@ -7,6 +7,7 @@ import (
 	"os"
 	"teste123/database"
 	"teste123/req"
+	"time"
 )
 
 func main() {
@@ -17,8 +18,6 @@ func main() {
 		return
 	}
 
-	fmt.Println("Database connected")
-
 	c := cron.New()
 
 	fmt.Println("Cron job started")
@@ -26,7 +25,22 @@ func main() {
 	period := os.Getenv("CRON_PERIOD")
 
 	if period == "" {
-		period = "@every 4h"
+		period = "0 */4 * * *"
+	}
+
+	now := time.Now()
+	fmt.Println("Hora atual:", now)
+
+	schedule, err := cron.ParseStandard(period)
+	if err != nil {
+		fmt.Println("Erro ao analisar o cron schedule:", err)
+		return
+	}
+
+	// Lista as próximas 10 execuções
+	for i := 0; i < 10; i++ {
+		now = schedule.Next(now)
+		fmt.Println("Próxima execução:", now)
 	}
 
 	// Run every 4 hours
