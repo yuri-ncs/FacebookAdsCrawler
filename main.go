@@ -12,20 +12,13 @@ import (
 
 func main() {
 
-	// Define a localização de São Paulo
-	loc, err := time.LoadLocation("America/Sao_Paulo")
-	if err != nil {
-		fmt.Println("Erro ao carregar a localização:", err)
-		return
-	}
-
 	db, err := database.DatabaseOpen()
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	c := cron.NewWithLocation(loc)
+	c := cron.New()
 
 	fmt.Println("Cron job started")
 
@@ -35,7 +28,7 @@ func main() {
 		period = "0 0 */4 * * *"
 	}
 
-	now := time.Now().In(loc)
+	now := time.Now()
 	fmt.Println("Hora atual:", now)
 
 	// remove first 0 from period
