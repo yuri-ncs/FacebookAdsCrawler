@@ -12,26 +12,36 @@ import (
 
 func main() {
 
+	// Define a localização de São Paulo
+	loc, err := time.LoadLocation("America/Sao_Paulo")
+	if err != nil {
+		fmt.Println("Erro ao carregar a localização:", err)
+		return
+	}
+
 	db, err := database.DatabaseOpen()
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	c := cron.New()
+	c := cron.NewWithLocation(loc)
 
 	fmt.Println("Cron job started")
 
 	period := os.Getenv("CRON_PERIOD")
 
 	if period == "" {
-		period = "0 */4 * * *"
+		period = "0 0 */4 * * *"
 	}
 
-	now := time.Now()
+	now := time.Now().In(loc)
 	fmt.Println("Hora atual:", now)
 
-	schedule, err := cron.ParseStandard(period)
+	// remove first 0 from period
+	periodWithoutFirstZero := period[1:]
+
+	schedule, err := cron.ParseStandard(periodWithoutFirstZero)
 	if err != nil {
 		fmt.Println("Erro ao analisar o cron schedule:", err)
 		return
