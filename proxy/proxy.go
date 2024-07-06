@@ -102,7 +102,7 @@ func GetClient() (*http.Client, error) {
 func GetIpCount() int {
 	return response.Count
 }
-cd
+
 func ChangeProxy() {
 	if select_proxy < 9 {
 		select_proxy++
