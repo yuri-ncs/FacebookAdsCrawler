@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"teste123/database"
+	"teste123/proxy"
 )
 
 type AdLibraryQuery struct {
@@ -24,90 +25,68 @@ type AdLibraryQuery struct {
 /*
 MakeRequest is a function that makes a request to the given URL and a given configuration.
 */
-func MakeRequest(urlString string) (*http.Response, error) {
+func MakeRequest(urlString string) (string, error) {
 
-	servers := []struct {
-		IP   string
-		Port string
-	}{
-		{"45.248.55.75", "6661"},
-		{"192.53.142.178", "5875"},
-		{"208.73.42.46", "9057"},
-		{"192.46.185.172", "5862"},
-		{"130.180.235.96", "5816"},
-		{"63.246.130.233", "6434"},
-		{"130.180.234.239", "7462"},
-		{"63.246.130.53", "6254"},
-		{"130.180.235.70", "5790"},
-		{"45.196.61.145", "6183"},
+	for i := 0; i < proxy.GetIpCount(); i++ {
+		fmt.Printf("Using [%s] to make the request.\n", proxy.GetCurrentIp())
+		client, err := proxy.GetClient()
+		if err != nil {
+			return "", fmt.Errorf("erro: %v", err)
+		}
+
+		reader := "__a=1&lsd=" + os.Getenv("X_FB_LSD")
+		data := strings.NewReader(reader)
+
+		req, err := http.NewRequest("POST", urlString, data)
+		if err != nil {
+			return "", fmt.Errorf("erro ao criar a requisição: %v", err)
+		}
+
+		req.Header.Add("User-Agent", os.Getenv("USER_AGENT"))
+		req.Header.Add("X-FB-LSD", os.Getenv("X_FB_LSD"))
+		req.Header.Add("Sec-Fetch-Site", "same-origin")
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+		res, err := client.Do(req)
+		if err != nil {
+			return "", fmt.Errorf("erro ao fazer a requisição: %v", err)
+		}
+
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return "", fmt.Errorf("erro ao ler o corpo da resposta: %v", err)
+		}
+		defer res.Body.Close()
+
+		// Remover a parte `for (;;);` para obter o JSON válido
+		if !strings.Contains(string(body), "totalCount") {
+			fmt.Printf("Failed using [%s], trying another...\n", proxy.GetCurrentIp())
+			proxy.ChangeProxy()
+			continue
+		}
+
+		return string(body), nil
 	}
-
-	actualServer := servers[3]
-
-	// Defina a URL do proxy com autenticação
-	proxyURL, err := url.Parse("http://euhjdfiy:qiy3k4qsrdcw@" + actualServer.IP + ":" + actualServer.Port)
-	if err != nil {
-		fmt.Println("Erro ao analisar a URL do proxy:", err)
-		panic("proxy")
-	}
-
-	// Crie um transporte HTTP personalizado
-	transport := &http.Transport{
-		Proxy: http.ProxyURL(proxyURL),
-	}
-
-	fmt.Println(transport)
-
-	// Crie um cliente HTTP usando o transporte personalizado
-	client := &http.Client{
-		Transport: transport,
-	}
-
-	reader := "__a=1&lsd=" + os.Getenv("X_FB_LSD")
-	data := strings.NewReader(reader)
-
-	req, err := http.NewRequest("POST", urlString, data)
-	if err != nil {
-		return nil, fmt.Errorf("erro ao criar a requisição: %v", err)
-	}
-
-	req.Header.Add("User-Agent", os.Getenv("USER_AGENT"))
-	req.Header.Add("X-FB-LSD", os.Getenv("X_FB_LSD"))
-	req.Header.Add("Sec-Fetch-Site", "same-origin")
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
-	res, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("erro ao fazer a requisição: %v", err)
-	}
-
-	return res, nil
+	return "", fmt.Errorf("tried every proxy")
 }
 
 /*
 ParseResponse is a function that parses the response from the request.
 */
-func ParseResponse(res *http.Response) (database.Data, error) {
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return database.Data{}, fmt.Errorf("erro ao ler o corpo da resposta: %v", err)
-	}
-	defer res.Body.Close()
+func ParseResponse(res string) (database.Data, error) {
 
 	// Remover a parte `for (;;);` para obter o JSON válido
-	cleanJsonString := strings.TrimPrefix(string(body), "for (;;);")
+	cleanJsonString := strings.TrimPrefix(res, "for (;;);")
 	//fmt.Println("Cleaned JSON string:", cleanJsonString)
 
 	var data database.Data
 
 	// Parsear o JSON
-	err = json.Unmarshal([]byte(cleanJsonString), &data)
+	err := json.Unmarshal([]byte(cleanJsonString), &data)
 	if err != nil {
 		fmt.Println(cleanJsonString)
 		return data, fmt.Errorf("erro ao fazer o parsing do JSON: %v", err)
-
 	}
-
 	return data, nil
 }
 

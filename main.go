@@ -5,6 +5,7 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/robfig/cron"
 	"teste123/database"
+	"teste123/proxy"
 	"teste123/req"
 )
 
@@ -17,6 +18,9 @@ func main() {
 	}
 
 	fmt.Println("Database connected")
+
+	proxy.Initialize()
+	fmt.Println("Initialized the proxy's")
 
 	c := cron.New()
 
