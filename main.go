@@ -1,12 +1,11 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/abx-software/spyron-ads-crawler/database"
 	"github.com/abx-software/spyron-ads-crawler/jobs"
 	"github.com/abx-software/spyron-ads-crawler/req"
-	"github.com/gorilla/mux"
+	"github.com/gin-gonic/gin"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/robfig/cron"
 	"net/http"
@@ -17,13 +16,11 @@ import (
 
 func main() {
 
-	fmt.Println(123)
 	db, err := database.DatabaseOpen()
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	fmt.Println(123)
 
 	scraper := jobs.NewScraper(db)
 
@@ -65,43 +62,55 @@ func main() {
 }
 
 func setupHttpServer(scraper *jobs.Scraper) {
-	r := mux.NewRouter()
-	r.HandleFunc("/scrape/{id}", scrapeKeyWord(scraper)).Methods("POST")
+	r := gin.Default()
+	r.POST("/scrape/:id", scrapeKeyWord(scraper))
 
-	fmt.Println("Starting server at port :" + os.Getenv("HTTP_SERVER_PORT"))
-	if err := http.ListenAndServe(":"+os.Getenv("HTTP_SERVER_PORT"), r); err != nil {
+	port := os.Getenv("HTTP_SERVER_PORT")
+	if port == "" {
+		port = "8080" // Default port if not specified
+	}
+
+	fmt.Println("Starting server at port :" + port)
+	if err := r.Run(":" + port); err != nil {
 		fmt.Println(err)
 	}
 }
 
-func scrapeKeyWord(scraper *jobs.Scraper) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		id := vars["id"]
-
+func scrapeKeyWord(scraper *jobs.Scraper) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
 		if id == "" {
-			http.Error(w, "ID is required", http.StatusBadRequest)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "ID is required"})
 			return
 		}
-
 		intId, err := strconv.Atoi(id)
 		if err != nil {
-			http.Error(w, "ID should be an integer", http.StatusBadRequest)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "ID should be an integer"})
 			return
 		}
 
-		keyWord, err := req.GetKeywordById(scraper.Database, uint(intId))
+		groupId := c.Query("group-id")
+		var uintGroupId *uint
+		intGroupId, err := strconv.Atoi(groupId)
+		if err != nil && groupId != "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "group ID should be an integer"})
+			return
+		}
+
+		if intGroupId != 0 {
+			parsed := uint(intGroupId)
+			uintGroupId = &parsed
+		}
+
+		keyWord, err := req.GetKeywordById(scraper.Database, uint(intId), uintGroupId)
 		if err != nil {
-			http.Error(w, "Cannot find keyword", http.StatusNotFound)
+			c.JSON(http.StatusNotFound, gin.H{"error": "Cannot find keyword"})
 			return
 		}
 
 		searchHistory := scraper.ScrapeOne(keyWord)
 		fmt.Printf("%s - %s scraped, found %d", keyWord.Name, keyWord.KeyWord, searchHistory.SearchCount)
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-
-		json.NewEncoder(w).Encode(*searchHistory)
+		c.JSON(http.StatusOK, searchHistory)
 	}
 }

@@ -212,10 +212,15 @@ func GetAllDataFromKeywordTable(db *gorm.DB) ([]database.KeyWord, error) {
 	return keyw, nil
 }
 
-func GetKeywordById(db *gorm.DB, id uint) (database.KeyWord, error) {
+func GetKeywordById(db *gorm.DB, id uint, groupId *uint) (database.KeyWord, error) {
 	var keyw database.KeyWord
 
-	err := db.Where("id = ? AND is_active = ? AND deleted_at IS NULL", id, true).First(&keyw).Error
+	query := fmt.Sprintf("id = %d AND is_active = %t AND deleted_at IS NULL", id, true)
+	if groupId != nil {
+		query = fmt.Sprintf("id = %d AND group_id = %d AND is_active = %t AND deleted_at IS NULL", id, *groupId, true)
+	}
+
+	err := db.Where(query).First(&keyw).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return keyw, fmt.Errorf("keyword with ID %d not found", id)

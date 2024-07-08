@@ -33,7 +33,7 @@ type SearchHistory struct {
 	ID uint `gorm:"primarykey" json:"id,omitempty"`
 
 	KeyWordId   uint `json:"keyWordId,omitempty"`
-	GroupId     uint `gorm:"index:idx_keyword_group_id;" json:"groupId,omitempty"`
+	GroupId     uint `json:"groupId,omitempty"`
 	SearchCount uint `json:"searchCount,omitempty"`
 
 	CreatedAt time.Time      `json:"created_at,omitempty"`
