@@ -29,9 +29,6 @@ func main() {
 	fmt.Println("Cron job started")
 
 	period := os.Getenv("CRON_PERIOD")
-	if period == "" {
-		period = "0 0 */4 * * *"
-	}
 
 	now := time.Now()
 	fmt.Println("Hora atual:", now)
