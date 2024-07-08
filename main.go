@@ -66,7 +66,7 @@ func main() {
 
 func setupHttpServer(scraper *jobs.Scraper) {
 	r := mux.NewRouter()
-	r.HandleFunc("/scrape/{id}", scrapeKeyWord(scraper)) // Route with a parameter
+	r.HandleFunc("/scrape/{id}", scrapeKeyWord(scraper)).Methods("POST")
 
 	fmt.Println("Starting server at port :" + os.Getenv("HTTP_SERVER_PORT"))
 	if err := http.ListenAndServe(":"+os.Getenv("HTTP_SERVER_PORT"), r); err != nil {
