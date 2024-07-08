@@ -5,6 +5,7 @@ import (
 	"github.com/abx-software/spyron-ads-crawler/database"
 	"github.com/abx-software/spyron-ads-crawler/jobs"
 	"github.com/abx-software/spyron-ads-crawler/req"
+	"github.com/abx-software/spyron-ads-crawler/setups"
 	"github.com/gin-gonic/gin"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/robfig/cron"
@@ -16,6 +17,7 @@ import (
 
 func main() {
 
+	setups.SetupEnv()
 	db, err := database.DatabaseOpen()
 	if err != nil {
 		fmt.Println(err)
