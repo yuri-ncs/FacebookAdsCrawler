@@ -8,12 +8,27 @@ import (
 )
 
 type KeyWord struct {
-	ID       uint   `gorm:"primarykey" json:"id,omitempty"`
-	Name     string `json:"name,omitempty"`
-	KeyWord  string `gorm:"index:idx_keyword_group_id,unique;" json:"keyWord,omitempty"`
+	ID uint `gorm:"primarykey" json:"id,omitempty"`
+
+	Name     string `json:"name"`
 	URL      string `json:"url"`
-	GroupId  uint   `gorm:"index:idx_keyword_group_id,unique;" json:"groupId,omitempty"`
-	IsActive bool   `json:"isActive,omitempty"`
+	KeyWord  string `gorm:"index:idx_keyword_group_id_active,unique;" json:"keyWord"`
+	GroupId  uint   `gorm:"index:idx_keyword_group_id_active,unique;" json:"groupId"`
+	IsActive *bool  `gorm:"index:idx_keyword_group_id_active,unique;" json:"isActive"`
+
+	CreatedAt time.Time      `json:"created_at,omitempty"`
+	UpdatedAt time.Time      `json:"updated_at,omitempty"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt,omitempty"`
+}
+
+type SearchHistory struct {
+	ID uint `gorm:"primarykey" json:"id,omitempty"`
+
+	KeyWordId uint    `json:"keyWordId"`
+	KeyWord   KeyWord `gorm:"foreignKey:key_word_id;references:ID" json:"keyWord"`
+
+	GroupId     uint `json:"groupId"`
+	SearchCount uint `json:"searchCount"`
 
 	CreatedAt time.Time      `json:"created_at,omitempty"`
 	UpdatedAt time.Time      `json:"updated_at,omitempty"`
@@ -27,18 +42,6 @@ type Payload struct {
 type Data struct {
 	Ar      int     `json:"__ar"`
 	Payload Payload `json:"payload"`
-}
-
-type SearchHistory struct {
-	ID uint `gorm:"primarykey" json:"id,omitempty"`
-
-	KeyWordId   uint `json:"keyWordId,omitempty"`
-	GroupId     uint `json:"groupId,omitempty"`
-	SearchCount uint `json:"searchCount,omitempty"`
-
-	CreatedAt time.Time      `json:"created_at,omitempty"`
-	UpdatedAt time.Time      `json:"updated_at,omitempty"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt,omitempty"`
 }
 
 func DatabaseOpen() (*gorm.DB, error) {
@@ -60,8 +63,6 @@ func DatabaseOpen() (*gorm.DB, error) {
 		return nil, err
 	}
 
-	err = db.AutoMigrate(&KeyWord{}, &SearchHistory{})
-
 	if err != nil {
 		return nil, err
 	}
@@ -70,11 +71,13 @@ func DatabaseOpen() (*gorm.DB, error) {
 }
 
 func PopulateKeyword(db *gorm.DB) error {
-	db.Create(&KeyWord{Name: "teste 1", KeyWord: "Software House", URL: "", GroupId: 1, IsActive: true})
-	db.Create(&KeyWord{Name: "teste 2", KeyWord: "Apple", URL: "", GroupId: 1, IsActive: true})
-	db.Create(&KeyWord{Name: "teste 3", KeyWord: "Samsung", URL: "", GroupId: 2, IsActive: true})
-	db.Create(&KeyWord{Name: "teste 4", KeyWord: "Huawei", URL: "", GroupId: 3, IsActive: true})
-	db.Create(&KeyWord{Name: "teste 5", KeyWord: "Dell", URL: "", GroupId: 5, IsActive: true})
+	True := true
+
+	db.Create(&KeyWord{Name: "teste 1", KeyWord: "Software House", URL: "", GroupId: 1, IsActive: &True})
+	db.Create(&KeyWord{Name: "teste 2", KeyWord: "Apple", URL: "", GroupId: 1, IsActive: &True})
+	db.Create(&KeyWord{Name: "teste 3", KeyWord: "Samsung", URL: "", GroupId: 2, IsActive: &True})
+	db.Create(&KeyWord{Name: "teste 4", KeyWord: "Huawei", URL: "", GroupId: 3, IsActive: &True})
+	db.Create(&KeyWord{Name: "teste 5", KeyWord: "Dell", URL: "", GroupId: 5, IsActive: &True})
 
 	return nil
 }
