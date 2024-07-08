@@ -2,14 +2,15 @@ package req
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/abx-software/spyron-ads-crawler/database"
 	"gorm.io/gorm"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
-	"teste123/database"
 )
 
 type AdLibraryQuery struct {
@@ -206,6 +207,20 @@ func GetAllDataFromKeywordTable(db *gorm.DB) ([]database.KeyWord, error) {
 	err := db.Where("is_active = ? AND deleted_at IS NULL", true).Find(&keyw).Error
 	if err != nil {
 		return nil, fmt.Errorf("error getting data from database: %v", err)
+	}
+
+	return keyw, nil
+}
+
+func GetKeywordById(db *gorm.DB, id uint) (database.KeyWord, error) {
+	var keyw database.KeyWord
+
+	err := db.Where("id = ? AND is_active = ? AND deleted_at IS NULL", id, true).First(&keyw).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return keyw, fmt.Errorf("keyword with ID %d not found", id)
+		}
+		return keyw, fmt.Errorf("error getting data from database: %v", err)
 	}
 
 	return keyw, nil
