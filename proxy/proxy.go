@@ -6,9 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
-	"strconv"
 )
 
 type Proxy struct {
@@ -78,22 +76,20 @@ func Parse(res string) {
 }
 
 func GetClient() (*http.Client, error) {
-	proxyURL, err := url.Parse("http://" + os.Getenv("PROXY_USER") + ":" + os.Getenv("PROXY_PASS") + "@" + response.Results[select_proxy].ProxyAddress + ":" + strconv.Itoa(response.Results[select_proxy].Port))
+	/*proxyURL, err := url.Parse("http://" + response.Results[select_proxy].Username + ":" + response.Results[select_proxy].Password + "@" + response.Results[select_proxy].ProxyAddress + ":" + strconv.Itoa(response.Results[select_proxy].Port))
 	if err != nil {
 		fmt.Println("Erro ao analisar a URL do proxy:", err)
 		panic("proxy")
 	}
 
 	// Crie um transporte HTTP personalizado
-	transport := &http.Transport{
+		transport := &http.Transport{
 		Proxy: http.ProxyURL(proxyURL),
-	}
-
-	fmt.Println(transport)
+	}*/
 
 	// Crie um cliente HTTP usando o transporte personalizado
 	client := &http.Client{
-		Transport: transport,
+		//Transport: transport,
 	}
 
 	return client, nil

@@ -61,6 +61,7 @@ func MakeRequest(urlString string) (string, error) {
 		// Remover a parte `for (;;);` para obter o JSON válido
 		if !strings.Contains(string(body), "totalCount") {
 			fmt.Printf("Failed using [%s], trying another...\n", proxy.GetCurrentIp())
+
 			proxy.ChangeProxy()
 			continue
 		}
