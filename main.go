@@ -1,149 +1,123 @@
 package main
 
 import (
-	"context"
 	"fmt"
+	"github.com/abx-software/spyron-ads-crawler/database"
+	"github.com/abx-software/spyron-ads-crawler/jobs"
+	"github.com/abx-software/spyron-ads-crawler/proxy"
+	"github.com/abx-software/spyron-ads-crawler/req"
+	"github.com/abx-software/spyron-ads-crawler/setups"
+	"github.com/gin-gonic/gin"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/robfig/cron"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/jaeger"
-	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/sdk/resource"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"log"
-	"teste123/database"
-	"teste123/proxy"
-	"teste123/req"
+	"net/http"
+	"os"
+	"strconv"
+	"time"
 )
 
 func main() {
-	exporter, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint("http://localhost:14268/api/traces")))
-	if err != nil {
-		log.Fatalf("failed to initialize Jaeger exporter: %v", err)
-	}
 
-	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(exporter),
-		sdktrace.WithResource(resource.NewWithAttributes(
-			"", // schemaURL
-			attribute.String("service.name", "Ads-Crawler"),
-		)),
-	)
-
-	defer func() {
-		if err := tp.Shutdown(context.Background()); err != nil {
-			log.Fatalf("Error shutting down tracer provider: %v", err)
-		}
-	}()
-
-	// Set the global tracer provider
-	otel.SetTracerProvider(tp)
-
-	// Create a tracer
-	tracer := otel.Tracer("AdsCrawler")
-	meter := otel.Meter("Ads-Crawler")
-
-	cronCounter, err := meter.Int64Counter(
-		"total.cron", // Metric name
-		metric.WithDescription("Total cron"),
-	)
-
-	requestCounter, err := meter.Int64Counter(
-		"total.request", // Metric name
-		metric.WithDescription("Total Request"),
-	)
-	_, span := tracer.Start(context.Background(), "DB-Connect")
-
+	setups.SetupEnv()
 	db, err := database.DatabaseOpen()
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	span.End()
-
 	fmt.Println("Database connected")
 
+	scraper := jobs.NewScraper(db)
+
 	proxy.Initialize()
+
 	fmt.Println("Initialized the proxy's")
 
 	c := cron.New()
 
 	fmt.Println("Cron job started")
 
-	// Run every 4 hours
+	period := os.Getenv("CRON_PERIOD")
+
+	now := time.Now()
+	fmt.Println("Hora atual:", now)
+	// remove first 0 from period
+	periodWithoutFirstZero := period[1:]
+
+	schedule, err := cron.ParseStandard(periodWithoutFirstZero)
+	if err != nil {
+		fmt.Println("Erro ao analisar o cron schedule:", err)
+		return
+	}
+
+	// Lista as próximas 10 execuções
+	for i := 0; i < 10; i++ {
+		now = schedule.Next(now)
+		fmt.Println("Próxima execução:", now)
+	}
+
+	// create cron jobs
 	c.AddFunc(
-		"*/60 * * * *", func() {
 
-			fmt.Println("Running cron job")
-			_, mainSpan := tracer.Start(context.Background(), "Cronjob")
-			cronCounter.Add(context.Background(), 1)
-
-			_, keywordGetSpan := tracer.Start(context.Background(), "KeywordGetInfo")
-			rows, err := req.GetAllDataFromKeywordTable(db)
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			keywordGetSpan.End()
-
-			for i, row := range rows {
-				_, processSpan := tracer.Start(context.Background(), "ProcessTime")
-				_, requestSpan := tracer.Start(context.Background(), "RequestTime")
-				requestCounter.Add(context.Background(), 1)
-
-				url, err := req.MakeUrl(row.KeyWord)
-				if err != nil {
-					fmt.Println(err)
-					return
-				}
-
-				res, err := req.MakeRequest(url)
-
-				if err != nil {
-
-					fmt.Println(err)
-					return
-				}
-
-				data, err := req.ParseResponse(res)
-				if err != nil {
-					fmt.Println(err)
-					return
-
-				}
-
-				requestSpan.End()
-				_, saveDbSpan := tracer.Start(context.Background(), "SaveKeywordTime")
-
-				// Imprimir a estrutura parseada
-				//fmt.Printf("Ar: %d\n", data.Ar)
-				fmt.Printf("%s - Payload TotalCounts: %d %d\n", row.KeyWord, data.Payload.TotalCount, i)
-
-				search := database.SearchHistory{
-					KeyWordId:   row.ID,
-					GroupId:     row.GroupId,
-					SearchCount: uint(data.Payload.TotalCount),
-				}
-
-				err = db.Create(&search).Error
-				if err != nil {
-					fmt.Errorf("error saving data to database: %v", err)
-				}
-
-				if err != nil {
-					fmt.Println(err)
-				}
-				saveDbSpan.End()
-				processSpan.End()
-			}
-			fmt.Println("end")
-			mainSpan.End()
+		period, func() {
+			scraper.ScrapeAll()
 		},
 	)
-
 	c.Start()
-
+	setupHttpServer(scraper)
 	select {}
+}
+
+func setupHttpServer(scraper *jobs.Scraper) {
+	r := gin.Default()
+	r.POST("/scrape/:id", scrapeKeyWord(scraper))
+
+	port := os.Getenv("HTTP_SERVER_PORT")
+	if port == "" {
+		port = "8080" // Default port if not specified
+	}
+
+	fmt.Println("Starting server at port :" + port)
+	if err := r.Run(":" + port); err != nil {
+		fmt.Println(err)
+	}
+}
+
+func scrapeKeyWord(scraper *jobs.Scraper) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		if id == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "ID is required"})
+			return
+		}
+		intId, err := strconv.Atoi(id)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "ID should be an integer"})
+			return
+		}
+
+		groupId := c.Query("group-id")
+		var uintGroupId *uint
+		intGroupId, err := strconv.Atoi(groupId)
+		if err != nil && groupId != "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "group ID should be an integer"})
+			return
+		}
+
+		if intGroupId != 0 {
+			parsed := uint(intGroupId)
+			uintGroupId = &parsed
+		}
+
+		keyWord, err := req.GetKeywordById(scraper.Database, uint(intId), uintGroupId)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Cannot find keyword"})
+			return
+		}
+
+		searchHistory := scraper.ScrapeOne(keyWord)
+		fmt.Printf("%s - %s scraped, found %d", keyWord.Name, keyWord.KeyWord, searchHistory.SearchCount)
+
+		c.JSON(http.StatusOK, searchHistory)
+	}
 }

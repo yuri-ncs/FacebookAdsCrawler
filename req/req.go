@@ -2,15 +2,16 @@ package req
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/abx-software/spyron-ads-crawler/database"
+	"github.com/abx-software/spyron-ads-crawler/proxy"
 	"gorm.io/gorm"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
-	"teste123/database"
-	"teste123/proxy"
 )
 
 type AdLibraryQuery struct {
@@ -87,7 +88,9 @@ func ParseResponse(res string) (database.Data, error) {
 	if err != nil {
 		fmt.Println(cleanJsonString)
 		return data, fmt.Errorf("erro ao fazer o parsing do JSON: %v", err)
+
 	}
+
 	return data, nil
 }
 
@@ -183,6 +186,25 @@ func GetAllDataFromKeywordTable(db *gorm.DB) ([]database.KeyWord, error) {
 	err := db.Where("is_active = ?", true).Where("deleted_at IS NULL").Find(&keyw).Error
 	if err != nil {
 		return nil, fmt.Errorf("error getting data from database: %v", err)
+	}
+
+	return keyw, nil
+}
+
+func GetKeywordById(db *gorm.DB, id uint, groupId *uint) (database.KeyWord, error) {
+	var keyw database.KeyWord
+
+	query := fmt.Sprintf("id = %d AND is_active = %t AND deleted_at IS NULL", id, true)
+	if groupId != nil {
+		query = fmt.Sprintf("id = %d AND group_id = %d AND is_active = %t AND deleted_at IS NULL", id, *groupId, true)
+	}
+
+	err := db.Where(query).First(&keyw).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return keyw, fmt.Errorf("keyword with ID %d not found", id)
+		}
+		return keyw, fmt.Errorf("error getting data from database: %v", err)
 	}
 
 	return keyw, nil
